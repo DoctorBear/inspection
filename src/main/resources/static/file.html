@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>文件详细页面</title>
+    <link rel="stylesheet" href="/inspection/lib/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/inspection/lib/fa/css/all.css">
+    <link rel="stylesheet" href="/inspection/css/main-config.css">
+    <link rel="stylesheet" href="/inspection/lib/input_file/input_file.css">
+    <script src="/inspection/lib/axios/dist/axios.min.js"></script>
+    <script src="/inspection/lib/vue/vue.js"></script>
+    <script src="/inspection/js/vue-components/file-uploader.js"></script>
+</head>
+<body>
+<main id="main">
+    <div class="container">
+        <div class="row">
+            <table id="file-data">
+                <thead>
+                <tr>
+                    <th>任务id</th>
+                    <th>uuid</th>
+                    <th>mac</th>
+                    <th>本地路径</th>
+                    <th>创建者</th>
+                    <th>创建时间</th>
+                    <th>最近修改者</th>
+                    <th>最近修改时间</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr align='center' v-if="show_file">
+                    <td>{{file_data.task}}</td>
+                    <td>{{file_data.uuid}}</td>
+                    <td>{{file_data.mac}}</td>
+                    <td>{{file_data.path}}</td>
+                    <td>{{file_data.creator}}</td>
+                    <td>{{file_data.created_time}}</td>
+                    <td>{{file_data.record_last_modified}}</td>
+                    <td>{{file_data.last_modified_time}}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8" style="text-align: center">
+                <label>文件内容</label>
+                <textarea class="doc-text" rows="20" readonly="readonly">{{file_data.text}}</textarea>
+            </div>
+            <div class="col-md-4" style="text-align: center">
+                <label>评审记录</label>
+                <textarea class="doc-text" rows="15" :readonly="isDisabled" v-model="file_data.secret_description"></textarea>
+                <div id="example-4" v-if="show_file">
+                    <input type="radio" id="one" value="false" :disabled="isDisabled" v-model="file_data.secret_involved">
+                    <label for="one">不涉密</label>
+                    <input type="radio" id="two" value="true" :disabled="isDisabled" v-model="file_data.secret_involved">
+                    <label for="two" style="color: red">涉密</label>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-primary" style="width:100%" v-text="button_text" @click="changeStatus"></button>
+<!--                    <button type="button" class="btn btn-primary">保存</button>-->
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+<script>
+    let main = new Vue({
+        el: "#main",
+        data: {
+            file_id:"123",
+            file_data:{
+                task:"123",
+                uuid:"",
+                mac:"",
+                path:"",
+                creator:"",
+                created_time:"",
+                record_last_modified:"",
+                last_modified_time:"",
+                secret_involved:"",
+                secret_description:"",
+                htmls:[]
+            },
+            show_file:false,
+            button_text:"编辑",
+            isDisabled:true,
+        },
+        methods: {
+            updateData: function (file_id) {
+                console.log(this.file_data)
+                axios.post('/inspection/get-file',{"file_id":file_id})
+                    .then((response)=>{
+                        this.$set(this,'file_data',response.data);
+                        console.log(response);
+                        console.log(this.file_data.secret_description);
+                        this.show_file = true
+                        // if(this.file_data.htmls.length>0){
+                        //     this.updateHtml(0)
+                        // }
+                    }).catch(function (error) {
+                    console.log(error);
+                });
+            },
+            updateHtml: function (index) {
+                // console.log(this.file_data.htmls[index])
+                // document.getElementById("visualized").innerHTML = this.file_data.htmls[index];
+            },
+            changeStatus: function(){
+                if(!this.isDisabled){
+                    axios.post('/inspection/comment',
+                        {"file_id": this.file_id,
+                        "involved": this.file_data.secret_involved,
+                        "description": this.file_data.secret_description
+                        })
+                        .then(response=>{
+                            console.log(response.data);
+                        }).catch(function (error) {
+                        console.log(error);
+                    });
+                }
+                this.isDisabled = !this.isDisabled
+                if(this.isDisabled){
+                    this.button_text = "编辑";
+                }else{
+                    this.button_text = "保存";
+                }
+            }
+        },
+        created:function(){
+            var url = window.location.search;
+            this.file_id = url.substr(url.indexOf("=")+1);
+            this.updateData(this.file_id);
+            console.log("file_id:"+this.file_id);
+        }
+    });
+</script>
+</body>
+</html>

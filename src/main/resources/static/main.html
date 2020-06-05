@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>任务操作页面</title>
+    <link rel="stylesheet" href="/inspection/lib/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/inspection/lib/fa/css/all.css">
+    <link rel="stylesheet" href="/inspection/css/main-config.css">
+    <link rel="stylesheet" href="/inspection/lib/input_file/input_file.css">
+    <script src="/inspection/lib/axios/dist/axios.min.js"></script>
+    <script src="/inspection/lib/vue/vue.js"></script>
+    <link rel="stylesheet" href="/inspection/lib/element/element.css">
+    <script src="/inspection/lib/element/element.js"></script>
+    <script src="/inspection/js/vue-components/file-uploader.js"></script>
+    <script>
+        import uploader from 'vue-simple-uploader'
+        Vue.use(uploader);
+    </script>
+</head>
+<body>
+<main id="main">
+    <ul class="list" id="task-list" @click="selectHost($event);">
+        <!-- 批量导入 （压缩包） -->
+        <li class="entry entry-normal">
+            <file-uploader @validate="validateTaskFile"
+                           @upload="uploadTaskFile"
+                           :forbid-upload="configFileForbid"
+                           :input-text="configFileName"
+                           :btn-text="`<span class='fas fa-upload'></span>`">
+            </file-uploader>
+        </li>
+<!--        <template>-->
+<!--            <li class="entry entry-normal">-->
+<!--                <uploader :options="options" class="uploader-example"-->
+<!--                          :autoStart="false"-->
+<!--                          @file-success="onFileSuccess"-->
+<!--                          @file-added="filesAdded">-->
+<!--                    <uploader-unsupport></uploader-unsupport>-->
+<!--                    <uploader-drop>-->
+<!--                        <uploader-btn :single="true" :attrs="attrs">选择Zip文件</uploader-btn>-->
+<!--                    </uploader-drop>-->
+<!--                    <uploader-list></uploader-list>-->
+<!--                </uploader>-->
+<!--            </li>-->
+<!--        </template>-->
+        <li role="separator" class="separator2"></li>
+        <li class="entry entry-button">
+            <div>
+                <button type="button" class="btn btn-primary" @click="downloadFiles" :disabled="isDisabled">导出检查文件</button>
+                <button type="button" class="btn btn-primary" @click="generateReport" :disabled="isDisabled2">生成审查报告</button>
+            </div>
+        </li>
+        <li role="separator" class="separator2"></li>
+        <!-- 主机列表项 -->
+        <label>主机列表</label>
+        <li v-for="(uuid, idx) in hostList"
+            :class="['entry', 'graph-entry', idx === curHostId?'entry-selected':'entry-normal']"
+            @click="updateFiles(idx, $event)">
+            <span class="entry-name" v-text="uuid"></span>
+        </span>
+        </li>
+    </ul>
+    <div class="right-part">
+        <div class="input-group">
+            <input type="text" class="form-control" v-model="keyword" aria-describedby="basic-addon2">
+            <span class="input-group-addon" id="basic-addon2" @click="searchFiles">搜索</span>
+        </div>
+
+        <template>
+            <el-table
+                    id="docs"
+                    :data="docs.slice((currentPage-1)*PageSize,currentPage*PageSize)"
+                    style="width: 100%"
+                    :row-class-name="tableRowClassName">
+                <el-table-column
+                        prop="uuid"
+                        label="主机uuid"
+                        width="180">
+                </el-table-column>
+                <el-table-column
+                        prop="path"
+                        label="文件路径">
+                </el-table-column>
+                <el-table-column
+                        prop="record_last_modified"
+                        label="最近修改"
+                        width="100">
+                </el-table-column>
+                <el-table-column
+                        label="操作"
+                        width="100"
+                        align="center">
+                    <template slot-scope="scope">
+                        <el-button @click="tofile(scope.row.id)" type="text" size="middle">查看</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <el-pagination
+                    @size-change="handleSizeChange"
+                    @current-change="handleCurrentChange"
+                    :current-page="currentPage"
+                    :page-size="PageSize"
+                    layout="total, prev, pager, next, jumper"
+                    :total="totalCount">
+            </el-pagination>
+        </template>
+<!--        <table id="docs">-->
+<!--            <thead>-->
+<!--            <tr>-->
+<!--                <th>主机uuid</th>-->
+<!--                <th>文件路径</th>-->
+<!--                <th>最近修改</th>-->
+<!--                <th>操作</th>-->
+<!--            </tr>-->
+<!--            </thead>-->
+<!--            <tbody>-->
+<!--            <tr v-for="doc in docs"-->
+<!--                :class="{'alt':doc.secret_involved === 'true'}"-->
+<!--                @click="`window.document.location='/inspection/file?fileid=${doc.id}'`">-->
+<!--                <td v-text="doc.uuid">-->
+<!--                <td v-text="doc.path">-->
+<!--                <td v-text="doc.record_last_modified">-->
+<!--                <td align="center">-->
+<!--                <button type="button"-->
+<!--                            class="btn btn-primary"-->
+<!--                            @click="tofile(doc.id)">-->
+<!--                查看详细-->
+<!--                </button>-->
+<!--                </td>-->
+<!--            </tr>-->
+<!--            </tbody>-->
+<!--        </table>-->
+    </div>
+</main>
+<script>
+    let main = new Vue({
+        el: "#main",
+        data: {
+            taskid: 2020,
+
+            options: {
+                target: '/inspection/upload',
+                testChunks: false
+            },
+
+            hostList: [],
+            curHostId: 0,
+            configFileName: '选择检查结果压缩文件导入',
+            configFileForbid:true,
+            keyword: '关键词',
+            isDisabled: false,
+            isDisabled2: false,
+
+            docs:[],
+            currentPage:1,
+            PageSize:12,
+            totalCount:100,
+        },
+        methods: {
+            tableRowClassName({row}) {
+                console.log(row.secret_involved);
+                if (row.secret_involved === 'true') {
+                    console.log(row.path);
+                    return 'alt';
+                }
+                return '';
+            },
+            tofile: function(fileid){
+                window.location.href="/inspection/file?fileid="+fileid;
+            },
+            searchFiles: function(){
+                var data = {"taskid":this.taskid,
+                    "hostid": null,
+                    "keywords":this.keyword};
+                if(!this.curHostId==0){
+                    data.hostid = this.hostList[this.curHostId];
+                }
+                axios.post('/inspection/search-files',data)
+                    .then(response=>{
+                        console.log(response.data.length);
+                        this.$set(this, 'docs', response.data);
+                    }).catch((error)=>{
+                    console.error(error);
+                })
+            },
+            updateHosts: function() {
+                axios.get('/inspection/get-hosts?taskid='+this.taskid)
+                    .then((response)=>{
+                        console.log(response.data);
+                        console.log(response.data.length);
+                        this.$set(this, 'hostList', ['全选'].concat(response.data));
+                    }).catch((error)=>{
+                        console.error(error);
+                })
+            },
+            updateFiles: function(idx, e) {
+                (e||window.event)['hostIdx'] = idx;
+                this.curHostId = idx;
+                console.log("curHostId:"+this.curHostId);
+                var host = this.hostList[this.curHostId];
+                if(host=='全选'){
+                    console.log("全选");
+                    this.getAllFiles();
+                }else{
+                    this.getFilesByHost();
+                }
+            },
+            downloadFiles:function() {
+                this.isDisabled = true;
+                console.log(this.isDisabled)
+                var elemIF = document.createElement('iframe');
+                elemIF.src = '/inspection/export-files?taskid='+this.taskid;
+                elemIF.style.display='none';
+                document.body.appendChild(elemIF);
+                setTimeout(() => {
+                    this.isDisabled = false
+                }, 8000);
+            },
+            generateReport: function(){
+                this.isDisabled2 = true;
+                console.log(this.isDisabled2)
+                var elemIF = document.createElement('iframe');
+                elemIF.src = '/inspection/generate-report?taskid='+this.taskid;
+                elemIF.style.display='none';
+                document.body.appendChild(elemIF);
+                setTimeout(() => {
+                    this.isDisabled2 = false
+                }, 8000);
+            },
+            getAllFiles: function() {
+                axios.get('/inspection/get-files?taskid='+this.taskid)
+                    .then((response)=>{
+                        console.log(response.data.length);
+                        this.docs = response.data;
+                        this.totalCount = this.docs.length;
+                    }).catch((error)=>{
+                    console.error(error);
+                });
+            },
+            getFilesByHost: function() {
+                var host = this.hostList[this.curHostId];
+                axios.get('/inspection/get-files-by-host?taskid='+this.taskid+'&uuid='+host)
+                    .then((response)=>{
+                        console.log(response.data.length);
+                        this.docs = response.data;
+                        this.totalCount = this.docs.length;
+                    }).catch((error)=>{
+                    console.error(error);
+                })
+            },
+            selectHost: function (e) {
+                let idx = parseInt((e||window.event)['hostIdx']);
+                if (idx >= 0) {
+                    this.curHostId = idx;
+                } else {
+                    this.curHostId = 0;
+                }
+            },
+            uploadTaskFile: function (files) {
+                const url = "/upload-graph";
+                let formData = new FormData();
+
+                formData.append("file", files[0]);
+                formData.append("taskid", this.taskid);
+                console.log(formData);
+
+                axios.post("/inspection/upload-file", formData)
+                    .then(response=>{
+                        console.log(response.data);
+                        window.location.reload();
+                    }).catch(error=>{
+                        console.log(error);
+                })
+            },
+            validateTaskFile: function (files) {
+                let notZip = true;
+                if (files.length == 0 || files.length > 1) {
+                    console.log("文件长度还是有问题")
+                    this.configFileName = '请选择一个文件';
+                } else{
+                    let file = files[0];
+                    notZip = file.name.split('.').pop().toLowerCase() != 'zip';
+                    if(notZip){this.configFileName = '只允许 .zip 文件';}
+                    else{
+                        console.log("没错，能上传了")
+                        this.configFileName = file.name;
+                    }
+                }
+                this.configFileForbid = notZip || files.length === 0;
+            },
+            handleSizeChange(val) {
+                // 改变每页显示的条数
+                this.PageSize=val;
+                this.currentPage=1;
+            },
+            handleCurrentChange(val) {
+                // 改变默认的页数
+                this.currentPage=val;
+            },
+        },
+        created: function () {
+            // this.refresh();
+            var url = window.location.search;
+            this.taskid = url.substr(url.indexOf("=")+1);
+            console.log("taskid:"+this.taskid);
+            this.updateHosts();
+            this.getAllFiles();
+        }
+    })
+</script>
+</body>
+</html>

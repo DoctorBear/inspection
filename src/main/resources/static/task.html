@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.springframework.org/schema/mvc">
+<head>
+    <meta charset="UTF-8">
+    <title>task</title>
+    <link rel="stylesheet" href="/inspection/lib/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/inspection/lib/fa/css/all.css">
+    <link rel="stylesheet" href="/inspection/css/main-config.css">
+    <link rel="stylesheet" href="/inspection/lib/input_file/input_file.css">
+    <script src="/inspection/lib/axios/dist/axios.min.js"></script>
+    <script src="/inspection/lib/vue/vue.js"></script>
+    <script src="/inspection/js/vue-components/file-uploader.js"></script>
+</head>
+<body>
+<main id="main2">
+    <ul class="list" id="task-list">
+        <!-- 新增 案由 （配置文件） -->
+        <li class="entry task-entry entry-normal">
+            <input class="entry-name" v-model="newTaskName" placeholder="输入 #任务名# 以新建">
+            <span class="entry-control entry-control-add"
+                  :disabled="isTaskNameInValid"
+                  @click="createTask">
+                <div>
+                    <span class="glyphicon glyphicon-plus"></span>
+                </div>
+            </span>
+        </li>
+        <li role="separator" class="separator"></li>
+
+        <!-- 任务列表项 -->
+        <li v-for="(task, idx) in taskList"
+            :class="['entry', 'task-entry', idx == curTaskId? 'entry-selected':'entry-normal']">
+            <a class="entry-name" :href="`/inspection/main?task-id=${task.id}`"
+               target="_blank" v-text="task.name"></a>
+<!--            <span @click="removeTask(taskName)" class="entry-control entry-control-remove">-->
+<!--                <div>-->
+<!--                    <span class="glyphicon glyphicon-remove"></span>-->
+<!--                </div>-->
+<!--            </span>-->
+        </li>
+    </ul>
+</main>
+<script th:inline>
+    let main = new Vue({
+        el: "#main2",
+        data: {
+            taskList:[],
+            curTaskId:-1,
+            configFileName: '选择检查结果压缩文件',
+            configFileForbid: true,
+
+            newTaskName:'',
+        },
+        methods: {
+            updateTask: function() {
+                axios.post('/inspection/get-task-list')
+                    .then((response)=>{
+                        this.$set(this, 'taskList', response.data);
+                        console.log(this.taskList);
+                    }).catch(function (error){
+                    console.log(error);
+                })
+            },
+            selectTask: function (e) {
+                let idx = parseInt((e||window.event)['taskIdx']);
+                if (idx >= 0) {
+                    this.curTaskId = idx;
+                    console.log(this.curTaskId)
+                } else {
+                    this.curTaskId = -1;
+                }
+            },
+            isTaskNameInValid:function(){
+                let id = this.newTaskName;
+
+                console.log(this.taskList.some(task=>task.name==id))
+                let a = (id === undefined ||
+                    id === null ||
+                    id == '' ||
+                    this.taskList.some(task => task.name == id));
+                console.log(a);
+                return a
+            },
+            createTask: function () {
+                if (this.isTaskNameInValid()) {
+                    console.info('任务名不合法')
+                }
+                let taskName = this.taskList[this.curTaskId];
+                axios.post('/inspection/create-task', {'name':this.newTaskName})
+                    .then((response)=>{
+                        if(response.data=="创建成功"){
+                            this.updateTask();
+                        }else{
+                            console.warn(response.data)
+                        }
+                    }).catch( (error) => {
+                    console.error(error);
+                })
+            },
+            setCookie: function (c_name, value, expiredays) {
+                var exdate=new Date();
+                exdate.setDate(exdate.getDate()+expiredays);
+                document.cookie=c_name+ "=" +value+
+                    ((expiredays==null) ? "" : ";expires="+exdate.toGMTString())
+                console.info(document.cookie);
+            },
+            getCookie: function (c_name) {
+                if (document.cookie.length>0)
+                {
+                    c_start=document.cookie.indexOf(c_name + "=")
+                    if (c_start!=-1)
+                    {
+                        c_start=c_start + c_name.length+1;
+                        c_end=document.cookie.indexOf(";",c_start);
+                        if (c_end==-1) c_end=document.cookie.length;
+                        return document.cookie.substring(c_start,c_end);
+                    }
+                }
+                return "";
+            },
+        },
+        created: function () {
+            this.updateTask();
+            // this.taskList = [
+            //     {id:'2020032504', name: '检查任务01'},
+            //     {id:'2020032505', name: '检查任务02'}
+            // ]
+        }
+    })
+</script>
+</body>
+</html>

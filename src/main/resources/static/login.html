@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="/inspection/lib/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/inspection/css/signins.css">
+    <script src="/inspection/lib/axios/dist/axios.min.js"></script>
+    <script src="/inspection/lib/vue/vue.js"></script>
+</head>
+<body>
+    <div class="container" style="margin-top: 20px" id="main">
+        <div class="row">
+            <form class="form-signin" id="signin" @submit.prevent="login()">
+                <h2 class="form-signin-heading">Please sign in</h2>
+                <input name="name" type="text" class="form-control"
+                       id="member_name" v-model="name">
+                <input name="password" type="password" class="form-control"
+                       id="member_password" v-model="password">
+<!--                <button class="btn btn-lg btn-primary btn-block" type="submit">登录</button>-->
+                <input type="submit" value="登录" class="btn btn-lg btn-primary btn-block">
+            </form>
+            <div id="warning" class="form-signin">
+                <div class="alert alert-info" role="alert" style="text-align: center">
+                    {{message}}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    let main = new Vue({
+        el: "#main",
+        data: {
+            name: '',
+            password: '',
+            message: '欢迎使用检查管理系统！'
+        },
+        methods:{
+            login: function (event) {
+                if(this.name.length==0 || this.password.length==0){
+                    this.message = "请将表单填写完整！";
+                }else{
+                    axios.post('/inspection/check-login',{
+                        username: this.name,
+                        password: this.password
+                    })
+                        .then( (response)=>{
+                            this.message = response.data;
+                            if(this.message=="登录成功"){
+                                this.setCookie("username", this.name, 1);
+                                window.location.href = '/inspection/task'
+                            }
+                        }).catch(function (error) {
+                        console.log(error);
+                    })
+                }
+            },
+            setCookie: function (c_name, value, expiredays) {
+                var exdate=new Date();
+                exdate.setDate(exdate.getDate()+expiredays);
+                document.cookie=c_name+ "=" +value+
+                    ((expiredays==null) ? "" : ";expires="+exdate.toGMTString())
+                console.info(document.cookie);
+            },
+            getCookie: function (c_name) {
+                if (document.cookie.length>0)
+                {
+                    c_start=document.cookie.indexOf(c_name + "=")
+                    if (c_start!=-1)
+                    {
+                        c_start=c_start + c_name.length+1;
+                        c_end=document.cookie.indexOf(";",c_start);
+                        if (c_end==-1) c_end=document.cookie.length;
+                        return document.cookie.substring(c_start,c_end);
+                    }
+                }
+                return "";
+            },
+        }
+    });
+
+</script>
+</html>

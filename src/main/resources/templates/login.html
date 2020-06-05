@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link
+	href="http://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css"
+	rel="stylesheet">
+<link
+	href="http://sandbox.runjs.cn/uploads/rs/238/n8vhm36h/dataTables.bootstra.css"
+	rel="stylesheet">
+<link href="static/css/signins.css" rel="stylesheet">
+	<script src="static/js/jquery.min.js"></script>
+	<script src="static/js/bootstrap.min.js"></script>
+	<title>Login</title>
+
+	<script type="text/javascript">
+		$(function () {
+			document.cookie = "";
+        })
+	</script>
+</head>
+<body >
+	<div class="container" style="margin-top: 20px">
+		<div class="row">
+			<div class="form-signin" id="signin">
+				<h2 class="form-signin-heading">Please sign in</h2>
+				<input name="id" type="text" class="form-control"
+					id="member_name" placeholder="Your ID">
+				<input name="password" type="password" class="form-control"
+					id="member_password" placeholder="Your password">
+				<button type="button" class="btn btn-primary" onclick="signin()">登录</button>
+				<select name="way" class="select" id="who">
+					<option value="1" selected="selected">用户登录</option>
+					<option value="2">商户登录</option>
+				</select>
+			</div>
+			<form class="form-signin">
+				<button type="button" class="btn btn-primary" onclick="signup()">用户注册</button>
+                <button type="button" class="btn btn-primary" onclick="signupstore()">商户注册</button>
+				还未注册？
+			</form>
+			<div id="warning" class="form-signin">
+
+			</div>
+		</div>
+	</div>
+</body>
+<script type="text/javascript">
+
+
+function signup(){
+	window.location.assign("/takeout/register");
+}
+function signupstore(){
+    window.location.assign("/takeout/registerforstore");
+}
+
+function signin(){
+    var username = document.getElementById("member_name").value;
+    var password = document.getElementById("member_password").value;
+    var who = document.getElementById("who").value;
+    if(username==""||password==""){
+        document.getElementById('warning').innerHTML=
+			'<div class="alert alert-danger" role="alert" style="text-align: center">' +
+			'<button type="button" class="close" data-dismiss="alert" aria-label="Close">' +
+			'<span aria-hidden="true">&times;</span></button><strong>Fail!</strong>您还没有将表单填写完整，请将表单填写完整！！</div>';
+    }
+    else{
+		var data = {"name":username,"password":password};
+        if(who == 1){
+            $.ajax({
+                url:"/takeout/checklogin",
+                type:"POST",
+                data:data,
+                dataType:"text",
+                // contentType: "application/json; charset=utf-8",
+                success:function(data){
+
+                    if(data!=null&&data!=""){
+                        console.log(data+"3倍ice cream!!!!!!!!!!!!!!");
+                        var obj = JSON.parse(data);
+                        setCookie('id',obj.id,1);
+                        setCookie('type',1, 1);
+                        document.getElementById('warning').innerHTML='<div class="alert alert-success" role="alert"style="text-align: center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Success!</strong>登录成功</div>';
+
+                        setTimeout('toUser('+obj.id+')',1000);
+                    }else{
+                        document.getElementById('warning').innerHTML='<div class="alert alert-danger" role="alert" style="text-align: center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Fail!</strong>登录失败，请检查密码是否正确</div>';
+                    }
+                },
+                error:function(data){
+                    document.getElementById('warning').innerHTML='<div class="alert alert-danger" role="alert" style="text-align: center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Fail!</strong>登录失败</div>';
+                }
+            });
+        }
+        else{
+            $.ajax({
+                url:"/takeout/storelogin",
+                type:"POST",
+                data:data,
+                dataType:"text",
+                // contentType: "application/json; charset=utf-8",
+                success:function(data){
+
+                    if(data!=null&&data!=""){
+                        console.log(data+"3倍ice cream!!!!!!!!!!!!!!");
+                        var obj = JSON.parse(data);
+                        setCookie('id',obj.id,1);
+                        setCookie('type',2, 1);
+                        document.getElementById('warning').innerHTML='<div class="alert alert-success" role="alert" style="text-align: center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Success!</strong>登录成功</div>';
+
+                        setTimeout('toStore('+obj.id+')',1000);
+                    }else{
+                        document.getElementById('warning').innerHTML='<div class="alert alert-danger" role="alert" style="text-align: center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Fail!</strong>登录失败，请检查密码是否正确</div>';
+                    }
+                },
+                error:function(data){
+                    document.getElementById('warning').innerHTML='<div class="alert alert-danger" role="alert" style="text-align: center"><button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button><strong>Fail!</strong>登录失败</div>';
+                }
+            });
+        }
+    }
+}
+function toUser(id) {
+	window.location.assign("/takeout/user?userid="+id);
+}
+function toStore(id) {
+    window.location.assign("/takeout/store?storeid="+id);
+}
+function getCookie(c_name)
+{
+    if (document.cookie.length>0)
+    {
+        c_start=document.cookie.indexOf(c_name + "=")
+        if (c_start!=-1)
+        {
+            c_start=c_start + c_name.length+1;
+            c_end=document.cookie.indexOf(";",c_start);
+            if (c_end==-1) c_end=document.cookie.length;
+            return document.cookie.substring(c_start,c_end);
+        }
+    }
+    return ""
+}
+function setCookie(c_name,value,expiredays)
+{
+    var exdate=new Date();
+    exdate.setDate(exdate.getDate()+expiredays);
+    document.cookie=c_name+ "=" +value+
+        ((expiredays==null) ? "" : ";expires="+exdate.toGMTString())
+}
+</script>
+</html>
